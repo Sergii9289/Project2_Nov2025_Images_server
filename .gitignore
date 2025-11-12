@@ -11,3 +11,5 @@ init_sql/
 # Файл з середовищем
 .env
 .env.*
+
+services/backend/src/app2.py

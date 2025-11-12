@@ -21,6 +21,12 @@ logger = get_logger(__name__)
 
 class UploadHandler(BaseHTTPRequestHandler):
 
+    def set_headers(self, status_code: int, headers: dict):
+        self.send_response(status_code)
+        for key, value in headers.items():
+            self.send_header(key, value)
+        self.end_headers()
+
     def log_message(self, format: str, *args: Any) -> None:
         # Приглушити стандартне логування (наприклад, GET /static/...)
         if self.path.startswith('/static/'):
@@ -28,11 +34,8 @@ class UploadHandler(BaseHTTPRequestHandler):
         super().log_message(format, *args)
 
     def send_json_error(self, status_code: int, message: str) -> None:
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
+        self.set_headers(status_code, {"Content-Type": "application/json"})
         response = {"detail": message}
-
         self.wfile.write(json.dumps(response).encode())
 
     def do_POST(self):
@@ -117,9 +120,7 @@ class UploadHandler(BaseHTTPRequestHandler):
         if self.path == '/':
             try:
                 with open(html_path, 'rb') as f:
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html")
-                    self.end_headers()
+                    self.set_headers(200, {"Content-Type": "text/html"})
                     self.wfile.write(f.read())
                     logger.info("→ Served index.html")
             except FileNotFoundError:
@@ -132,9 +133,7 @@ class UploadHandler(BaseHTTPRequestHandler):
             if os.path.isfile(html_path):
                 try:
                     with open(html_path, 'rb') as f:
-                        self.send_response(200)
-                        self.send_header("Content-Type", "text/html")
-                        self.end_headers()
+                        self.set_headers(200, {"Content-Type": "text/html"})
                         self.wfile.write(f.read())
                         logger.info(f"→ Served HTML: {self.path}")
                 except Exception as e:
@@ -161,9 +160,7 @@ class UploadHandler(BaseHTTPRequestHandler):
                 content_type = content_types.get(ext, 'application/octet-stream')
                 try:
                     with open(image_path, 'rb') as f:
-                        self.send_response(200)
-                        self.send_header("Content-Type", content_type)
-                        self.end_headers()
+                        self.set_headers(200, {"Content-Type": content_type})
                         self.wfile.write(f.read())
                         logger.info(f"→ Served image: {image_name}")
                 except Exception as e:
@@ -190,9 +187,7 @@ class UploadHandler(BaseHTTPRequestHandler):
                 content_type = content_types.get(ext, 'application/octet-stream')
                 try:
                     with open(static_path, 'rb') as f:
-                        self.send_response(200)
-                        self.send_header("Content-Type", content_type)
-                        self.end_headers()
+                        self.set_headers(200, {"Content-Type": content_type})
                         self.wfile.write(f.read())
                         # Не логувати успішні static-файли
                 except Exception as e:
@@ -208,9 +203,7 @@ class UploadHandler(BaseHTTPRequestHandler):
             if os.path.isfile(images_path):
                 try:
                     with open(images_path, 'rb') as f:
-                        self.send_response(200)
-                        self.send_header("Content-Type", "text/html")
-                        self.end_headers()
+                        self.set_headers(200, {"Content-Type": "text/html"})
                         self.wfile.write(f.read())
                         logger.info("→ Served images.html")
                 except Exception as e:
@@ -252,9 +245,7 @@ class UploadHandler(BaseHTTPRequestHandler):
                 return
 
             logger.info(f"→ Returned {len(files)} image(s)")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
+            self.set_headers(200, {"Content-Type": "application/json"})
             self.wfile.write(json.dumps(files).encode())
             return
 

@@ -24,64 +24,77 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const displayFiles = () => {
-    const storedFiles = JSON.parse(localStorage.getItem('uploadedImages')) || [];
-    fileListWrapper.innerHTML = '';
+  const displayFiles = async () => {
+    try {
+      const response = await fetch('/api/files');
+      const storedFiles = await response.json(); // список з бекенду [{filename, display_name}, ...]
 
-    if (storedFiles.length === 0) {
-      fileListWrapper.innerHTML = '<p class="upload__promt" style="text-align: center; margin-top: 50px;">Зображення ще не завантажено.</p>';
-    } else {
-      const container = document.createElement('div');
-      container.className = 'file-list-container';
+      fileListWrapper.innerHTML = '';
 
-      const header = document.createElement('div');
-      header.className = 'file-list-header';
-      header.innerHTML = `
-        <div class="file-col file-col-name">Назва</div>
-        <div class="file-col file-col-url">Посилання</div>
-        <div class="file-col file-col-delete">Видалити</div>
-      `;
-      container.appendChild(header);
+      if (!storedFiles || storedFiles.length === 0) {
+        fileListWrapper.innerHTML =
+          '<p class="upload__promt" style="text-align: center; margin-top: 50px;">Зображення ще не завантажено.</p>';
+      } else {
+        const container = document.createElement('div');
+        container.className = 'file-list-container';
 
-      const list = document.createElement('div');
-      list.id = 'file-list';
-
-      storedFiles.forEach((fileData, index) => {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-list-item';
-        fileItem.innerHTML = `
-          <div class="file-col file-col-name">
-            <span class="file-icon"><img src="/static/image-uploader/img/icon/Group.png" alt="file icon"></span>
-            <span class="file-name">${fileData.name}</span>
-          </div>
-          <div class="file-col file-col-url">
-            <a href="/media/${fileData.name}" target="_blank">/media/${fileData.name}</a>
-          </div>
-          <div class="file-col file-col-delete">
-            <button class="delete-btn" data-index="${index}">
-              <img src="/static/image-uploader/img/icon/delete.png" alt="delete icon">
-            </button>
-          </div>
+        const header = document.createElement('div');
+        header.className = 'file-list-header';
+        header.innerHTML = `
+          <div class="file-col file-col-name">Назва</div>
+          <div class="file-col file-col-url">Посилання</div>
+          <div class="file-col file-col-delete">Видалити</div>
         `;
-        list.appendChild(fileItem);
-      });
+        container.appendChild(header);
 
-      container.appendChild(list);
-      fileListWrapper.appendChild(container);
-      addDeleteListeners();
+        const list = document.createElement('div');
+        list.id = 'file-list';
+
+        storedFiles.forEach((fileData, index) => {
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-list-item';
+          fileItem.innerHTML = `
+            <div class="file-col file-col-name">
+              <span class="file-icon"><img src="/static/image-uploader/img/icon/Group.png" alt="file icon"></span>
+              <span class="file-name">${fileData.display_name}</span>
+            </div>
+            <div class="file-col file-col-url">
+              <a href="/media/${fileData.filename}" target="_blank">${fileData.display_name}</a>
+            </div>
+            <div class="file-col file-col-delete">
+              <button class="delete-btn" data-index="${index}" data-filename="${fileData.filename}">
+                <img src="/static/image-uploader/img/icon/delete.png" alt="delete icon">
+              </button>
+            </div>
+          `;
+          list.appendChild(fileItem);
+        });
+
+        container.appendChild(list);
+        fileListWrapper.appendChild(container);
+        addDeleteListeners(storedFiles);
+      }
+
+      updateTabStyles();
+    } catch (err) {
+      console.error('✖ Failed to fetch files:', err);
+      fileListWrapper.innerHTML =
+        '<p class="upload__promt" style="text-align: center; margin-top: 50px;">Помилка отримання списку файлів.</p>';
     }
-
-    updateTabStyles();
   };
 
-  const addDeleteListeners = () => {
+  const addDeleteListeners = (storedFiles) => {
     document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', (event) => {
-        const indexToDelete = parseInt(event.currentTarget.dataset.index);
-        let storedFiles = JSON.parse(localStorage.getItem('uploadedImages')) || [];
-        storedFiles.splice(indexToDelete, 1);
-        localStorage.setItem('uploadedImages', JSON.stringify(storedFiles));
-        displayFiles();
+      button.addEventListener('click', async (event) => {
+        const filename = event.currentTarget.dataset.filename;
+
+        // Запит на бекенд для видалення файлу
+        try {
+          await fetch(`/api/delete/${filename}`, { method: 'DELETE' });
+          displayFiles(); // оновлюємо список після видалення
+        } catch (err) {
+          console.error('✖ Failed to delete file:', err);
+        }
       });
     });
   };

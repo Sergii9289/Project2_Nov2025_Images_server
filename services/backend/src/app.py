@@ -5,7 +5,7 @@ import uuid
 # це стандартний модуль Python, який надає високорівневі операції з файлами та директоріями
 import shutil
 from multiprocessing import Process, current_process
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timezone
 from typing import cast, Any, BinaryIO
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -20,6 +20,7 @@ from settings.logging_config import get_logger
 import re
 import unicodedata
 
+
 def sanitize_filename(name: str) -> str:
     # Перетворюємо кирилицю та інші символи у латиницю (якщо можливо)
     name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
@@ -27,8 +28,29 @@ def sanitize_filename(name: str) -> str:
     name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
     return name
 
+
 logger = get_logger(__name__)
 
+
+import os
+
+import os
+
+def get_files():
+    files = []
+    for filename in os.listdir(config.IMAGE_DIR):
+        if os.path.isfile(os.path.join(config.IMAGE_DIR, filename)) and os.path.splitext(filename)[1].lower() in config.SUPPORTED_FORMATS:
+            name_part, ext = os.path.splitext(filename)
+            # беремо все до останнього "_"
+            if "_" in name_part:
+                display_name = "_".join(name_part.split("_")[:-1]) + ext
+            else:
+                display_name = filename  # якщо немає "_", залишаємо як є
+            files.append({
+                "filename": filename,
+                "display_name": display_name
+            })
+    return files
 
 
 class UploadHandler(BaseHTTPRequestHandler):
@@ -157,6 +179,17 @@ class UploadHandler(BaseHTTPRequestHandler):
                 self.send_json_error(404, "HTML file not found.")
             return
 
+        if self.path == '/api/files':
+            try:
+                files = get_files()  # твоя функція, що повертає список файлів
+                self.set_headers(200, {"Content-Type": "application/json"})
+                self.wfile.write(json.dumps(files, ensure_ascii=False).encode('utf-8'))
+                logger.info("→ Served files list")
+            except Exception as e:
+                logger.error(f"✖ Failed to get files: {e}")
+                self.send_json_error(500, "Failed to get files")
+            return
+
         if self.path.startswith('/media/'):
             image_name = self.path.removeprefix('/media/')
             image_path = os.path.join(config.IMAGE_DIR, image_name)
@@ -243,36 +276,17 @@ class UploadHandler(BaseHTTPRequestHandler):
                 self.send_json_error(404, "upload.html not found")
             return
 
-            # files = []
-            # for filename in filenames:
-            #     filepath = os.path.join(config.IMAGE_DIR, filename)
-            #     ext = os.path.splitext(filename)[1].lower()
-            #     if ext in config.SUPPORTED_FORMATS and os.path.isfile(filepath):
-            #         created_at = datetime.fromtimestamp(os.path.getatime(filepath), tz=UTC).isoformat()
-            #         size = os.path.getsize(filepath)
-            #         files.append({
-            #             'filename': filename,
-            #             'created_at': created_at,
-            #             'size': size
-            #         })
-            #
-            # if not files:
-            #     logger.warning("✖ No images found")
-            #     self.send_json_error(404, "No images found.")
-            #     return
-
-            logger.info(f"→ Returned {len(files)} image(s)")
-            self.set_headers(200, {"Content-Type": "application/json"})
-            self.wfile.write(json.dumps(files).encode())
-            return
 
         logger.warning(f"✖ Unknown GET path: {self.path}")
         self.send_json_error(404, "Not Found")
+
 
 def run():
     server = HTTPServer(("0.0.0.0", 8000), cast(RequestHandlerFactory, UploadHandler))
     print("Server running on http://localhost:8000 ...")
     server.serve_forever()
 
+
 if __name__ == '__main__':
     run()
+    # print(get_files())

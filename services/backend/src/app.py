@@ -4,6 +4,7 @@ import os
 import uuid
 # це стандартний модуль Python, який надає високорівневі операції з файлами та директоріями
 import shutil
+from multiprocessing import Process, current_process
 from datetime import datetime, UTC
 from typing import cast, Any, BinaryIO
 
@@ -215,34 +216,38 @@ class UploadHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/upload/':
-            try:
-                filenames = os.listdir(config.IMAGE_DIR)
-            except FileNotFoundError:
-                logger.error("✖ Images directory not found")
-                self.send_json_error(500, "Images directory not found.")
-                return
-            except PermissionError:
-                logger.error("✖ Permission denied to access images directory")
-                self.send_json_error(500, "Permission denied to access images directory.")
-                return
+            upload_path = os.path.join(BASE_DIR, 'services', 'static', 'form', 'upload.html')
+            if os.path.isfile(upload_path):
+                try:
+                    with open(upload_path, 'rb') as f:
+                        self.set_headers(200, {"Content-Type": "text/html"})
+                        self.wfile.write(f.read())
+                        logger.info("→ Served upload.html")
+                except Exception as e:
+                    logger.error(f"✖ Failed to serve upload.html: {e}")
+                    self.send_json_error(500, "Failed to serve upload.html")
+            else:
+                logger.warning("✖ upload.html not found")
+                self.send_json_error(404, "upload.html not found")
+            return
 
-            files = []
-            for filename in filenames:
-                filepath = os.path.join(config.IMAGE_DIR, filename)
-                ext = os.path.splitext(filename)[1].lower()
-                if ext in config.SUPPORTED_FORMATS and os.path.isfile(filepath):
-                    created_at = datetime.fromtimestamp(os.path.getatime(filepath), tz=UTC).isoformat()
-                    size = os.path.getsize(filepath)
-                    files.append({
-                        'filename': filename,
-                        'created_at': created_at,
-                        'size': size
-                    })
-
-            if not files:
-                logger.warning("✖ No images found")
-                self.send_json_error(404, "No images found.")
-                return
+            # files = []
+            # for filename in filenames:
+            #     filepath = os.path.join(config.IMAGE_DIR, filename)
+            #     ext = os.path.splitext(filename)[1].lower()
+            #     if ext in config.SUPPORTED_FORMATS and os.path.isfile(filepath):
+            #         created_at = datetime.fromtimestamp(os.path.getatime(filepath), tz=UTC).isoformat()
+            #         size = os.path.getsize(filepath)
+            #         files.append({
+            #             'filename': filename,
+            #             'created_at': created_at,
+            #             'size': size
+            #         })
+            #
+            # if not files:
+            #     logger.warning("✖ No images found")
+            #     self.send_json_error(404, "No images found.")
+            #     return
 
             logger.info(f"→ Returned {len(files)} image(s)")
             self.set_headers(200, {"Content-Type": "application/json"})

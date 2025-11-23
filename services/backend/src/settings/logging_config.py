@@ -13,7 +13,8 @@ def get_logger(name: str = __name__) -> logging.Logger:
     if not logger.handlers:
         # Консольний логер
         console_handler = logging.StreamHandler()
-        console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        #  console_formatter = logging.Formatter('%(asctime)s - %(processname)s - %(levelname)s - %(message)s')
+        console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
 

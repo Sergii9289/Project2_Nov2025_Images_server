@@ -27,3 +27,9 @@ class MaxSizeExceedError(APIError):
         max_size_mb = max_size_bytes / (1024 * 1024)
         message = f'File size exceeds the maximum allowed size of {max_size_mb:.2f} MB.'
         super().__init__(message)
+
+class MultipleFilesUploadError(APIError):
+    """Raised when more than one file is uploaded"""
+    def __init__(self):
+        message = "Only one file can be uploaded per request."
+        super().__init__(message)

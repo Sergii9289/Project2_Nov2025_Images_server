@@ -11,6 +11,9 @@ class AppConfig(BaseSettings):
     IMAGE_DIR: str = "images"
     LOG_DIR: str = "logs"
 
+    WEB_SERVER_WORKERS: int
+    WEB_SERVER_START_PORT: int
+
     MAX_FILE_SIZE: int = 5 * 1024 * 1024
     SUPPORTED_FORMATS: set[str] = {'.jpg', '.png', '.gif'}
 

@@ -1,112 +1,116 @@
-document.addEventListener('DOMContentLoaded', function () {
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' || event.key === 'F5') {
-            event.preventDefault();
-
-            sessionStorage.removeItem('pageWasVisited');
-            window.location.href = '../index.html';
-        }
-    });
-});
-
 document.addEventListener('DOMContentLoaded', () => {
-    const fileUpload = document.getElementById('file-upload');
-    const imagesButton = document.getElementById('images-tab-btn');
-    const dropzone = document.querySelector('.upload__dropzone');
-    const currentUploadInput = document.querySelector('.upload__input');
-    const copyButton = document.querySelector('.upload__copy');
+  const fileUpload = document.getElementById('file-upload');
+  const imagesButton = document.getElementById('images-tab-btn');
+  const dropzone = document.querySelector('.upload__dropzone');
+  const currentUploadInput = document.querySelector('.upload__input');
+  const copyButton = document.querySelector('.upload__copy');
 
-    const updateTabStyles = () => {
-        const uploadTab = document.getElementById('upload-tab-btn');
-        const imagesTab = document.getElementById('images-tab-btn');
-        const storedFiles = JSON.parse(localStorage.getItem('uploadedImages')) || [];
+  // Оновлення стилів вкладок
+  const updateTabStyles = () => {
+    const uploadTab = document.getElementById('upload-tab-btn');
+    const imagesTab = document.getElementById('images-tab-btn');
+    const isImagesPage = window.location.pathname.includes('images');
 
-        const isImagesPage = window.location.pathname.includes('images.html');
+    uploadTab.classList.remove('upload__tab--active');
+    imagesTab.classList.remove('upload__tab--active');
 
-        uploadTab.classList.remove('upload__tab--active');
-        imagesTab.classList.remove('upload__tab--active');
+    if (isImagesPage) {
+      imagesTab.classList.add('upload__tab--active');
+    } else {
+      uploadTab.classList.add('upload__tab--active');
+    }
+  };
 
-        if (isImagesPage) {
-            imagesTab.classList.add('upload__tab--active');
-        } else {
-            uploadTab.classList.add('upload__tab--active');
-        }
-    };
+  // Відправка файлу на сервер
+  const uploadFileToServer = (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const handleAndStoreFiles = (files) => {
-        if (!files || files.length === 0) {
-            return;
-        }
-        const storedFiles = JSON.parse(localStorage.getItem('uploadedImages')) || [];
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        const MAX_SIZE_MB = 5;
-        const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-        let filesAdded = false;
-        let lastFileName = '';
+    return fetch("/upload/", {
+      method: "POST",
+      body: formData
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json();
+    });
+  };
 
-        for (const file of files) {
-            if (!allowedTypes.includes(file.type) || file.size > MAX_SIZE_BYTES) {
-                continue;
-            }
+  // Обробка файлів
+  const handleAndStoreFiles = (files) => {
+    if (!files || files.length === 0) return;
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const fileData = { name: file.name, url: event.target.result };
-                storedFiles.push(fileData);
-                localStorage.setItem('uploadedImages', JSON.stringify(storedFiles));
-                updateTabStyles();
-            };
-            reader.readAsDataURL(file);
-            filesAdded = true;
-            lastFileName = file.name;
-        }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const MAX_SIZE_MB = 5;
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
-        if (filesAdded) {
-            if (currentUploadInput) {
-                currentUploadInput.value = `https://sharefile.xyz/${lastFileName}`;
-            }
-            alert("Files selected successfully! Go to the 'Images' tab to view them.");
-        }
-    };
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type) || file.size > MAX_SIZE_BYTES) {
+        alert(`Файл ${file.name} не підтримується або занадто великий.`);
+        continue;
+      }
 
-    if (copyButton && currentUploadInput) {
-        copyButton.addEventListener('click', () => {
-            const textToCopy = currentUploadInput.value;
+      // Відправляємо на сервер
+      uploadFileToServer(file)
+        .then(data => {
+          // data містить { filename: "1_<uuid>.jpg", url: "/images/1_<uuid>.jpg" }
+          const storedFiles = JSON.parse(localStorage.getItem('uploadedImages')) || [];
+          storedFiles.push({ name: data.filename, url: data.url });
+          localStorage.setItem('uploadedImages', JSON.stringify(storedFiles));
 
-            if (textToCopy && textToCopy !== 'https://') {
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    copyButton.textContent = 'COPIED!';
-                    setTimeout(() => {
-                        copyButton.textContent = 'COPY';
-                    }, 2000);
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                });
-            }
+          if (currentUploadInput) {
+            currentUploadInput.value = data.url;
+          }
+
+          alert(`Файл ${data.filename} успішно завантажено!`);
+          updateTabStyles();
+        })
+        .catch(err => {
+          console.error("Upload error:", err);
+          alert(`Не вдалося завантажити ${file.name}`);
         });
     }
+  };
 
-    if (imagesButton) {
-        imagesButton.addEventListener('click', () => {
-            window.location.href = '/images/';
-        });
-    }
+  // Кнопка копіювання
+  if (copyButton && currentUploadInput) {
+    copyButton.addEventListener('click', () => {
+      const textToCopy = currentUploadInput.value;
+      if (textToCopy && textToCopy !== 'https://') {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          copyButton.textContent = 'COPIED!';
+          setTimeout(() => { copyButton.textContent = 'COPY'; }, 2000);
+        }).catch(err => console.error('Failed to copy text: ', err));
+      }
+    });
+  }
 
+  // Перехід до галереї
+  if (imagesButton) {
+    imagesButton.addEventListener('click', () => {
+      window.location.href = '/images/';
+    });
+  }
+
+  // Вибір файлу через input
+  if (fileUpload) {
     fileUpload.addEventListener('change', (event) => {
-        handleAndStoreFiles(event.target.files);
-        event.target.value = '';
+      handleAndStoreFiles(event.target.files);
+      event.target.value = '';
     });
+  }
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropzone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
+  // Drag & Drop
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
     });
+  });
 
-    dropzone.addEventListener('drop', (event) => {
-        handleAndStoreFiles(event.dataTransfer.files);
-    });
+  dropzone.addEventListener('drop', (event) => {
+    handleAndStoreFiles(event.dataTransfer.files);
+  });
 
-    updateTabStyles();
-}); 
+  updateTabStyles();
+});

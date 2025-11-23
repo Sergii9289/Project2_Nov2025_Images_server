@@ -17,7 +17,18 @@ from interfaces.protocols import SupportsWrite, RequestHandlerFactory
 from settings.config import config as config, BASE_DIR
 from settings.logging_config import get_logger
 
+import re
+import unicodedata
+
+def sanitize_filename(name: str) -> str:
+    # Перетворюємо кирилицю та інші символи у латиницю (якщо можливо)
+    name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+    # Замінюємо все, що не букви/цифри/дефіс/підкреслення, на "_"
+    name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+    return name
+
 logger = get_logger(__name__)
+
 
 
 class UploadHandler(BaseHTTPRequestHandler):
@@ -84,7 +95,8 @@ class UploadHandler(BaseHTTPRequestHandler):
                 raise MaxSizeExceedError(config.MAX_FILE_SIZE)
 
             original_name = os.path.splitext(filename)[0].lower()
-            unique_name = f'{original_name}_{uuid.uuid4()}{ext}'
+            safe_name = sanitize_filename(original_name)
+            unique_name = f'{safe_name}_{uuid.uuid4()}{ext}'
             os.makedirs(config.IMAGE_DIR, exist_ok=True)
 
             file_path = os.path.join(config.IMAGE_DIR, unique_name)

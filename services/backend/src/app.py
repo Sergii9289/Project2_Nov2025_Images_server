@@ -31,15 +31,16 @@ def sanitize_filename(name: str) -> str:
 
 logger = get_logger(__name__)
 
-
 import os
 
 import os
+
 
 def get_files():
     files = []
     for filename in os.listdir(config.IMAGE_DIR):
-        if os.path.isfile(os.path.join(config.IMAGE_DIR, filename)) and os.path.splitext(filename)[1].lower() in config.SUPPORTED_FORMATS:
+        if os.path.isfile(os.path.join(config.IMAGE_DIR, filename)) and os.path.splitext(filename)[
+            1].lower() in config.SUPPORTED_FORMATS:
             name_part, ext = os.path.splitext(filename)
             # беремо все до останнього "_"
             if "_" in name_part:
@@ -63,7 +64,7 @@ class UploadHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:
         # Приглушити стандартне логування (наприклад, GET /static/...)
-        if self.path.startswith('/static/'):
+        if self.path.startswith('/frontend/'):
             return  # нічого не логувати
         super().log_message(format, *args)
 
@@ -71,6 +72,27 @@ class UploadHandler(BaseHTTPRequestHandler):
         self.set_headers(status_code, {"Content-Type": "application/json"})
         response = {"detail": message}
         self.wfile.write(json.dumps(response).encode())
+
+    def do_DELETE(self):
+        if self.path.startswith('/api/delete/'):
+            filename = self.path.removeprefix('/api/delete/')
+            file_path = os.path.join(config.IMAGE_DIR, filename)
+
+            if os.path.isfile(file_path):
+                try:
+                    os.remove(file_path)
+                    logger.info(f"✓ Deleted file: {filename}")
+                    self.set_headers(200, {"Content-Type": "application/json"})
+                    self.wfile.write(json.dumps({"detail": "File deleted"}).encode())
+                except Exception as e:
+                    logger.error(f"✖ Failed to delete file: {e}")
+                    self.send_json_error(500, "Failed to delete file")
+            else:
+                logger.warning(f"✖ File not found for deletion: {filename}")
+                self.send_json_error(404, "File not found")
+        else:
+            logger.warning(f"✖ Unsupported DELETE path: {self.path}")
+            self.send_json_error(404, "Not Found")
 
     def do_POST(self):
         logger.info("POST request received: %s", self.path)
@@ -150,7 +172,7 @@ class UploadHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(saved_file_info).encode())
 
     def do_GET(self):
-        html_path = os.path.join(BASE_DIR, 'services', 'static', 'index.html')
+        html_path = os.path.join(BASE_DIR, 'services', 'frontend', 'index.html')
 
         if self.path == '/':
             try:
@@ -161,22 +183,6 @@ class UploadHandler(BaseHTTPRequestHandler):
             except FileNotFoundError:
                 logger.error("✖ index.html not found")
                 self.send_json_error(404, "index.html not found")
-            return
-
-        if self.path.startswith('/form/'):
-            html_path = os.path.join(BASE_DIR, 'services', 'templates', self.path.lstrip('/'))
-            if os.path.isfile(html_path):
-                try:
-                    with open(html_path, 'rb') as f:
-                        self.set_headers(200, {"Content-Type": "text/html"})
-                        self.wfile.write(f.read())
-                        logger.info(f"→ Served HTML: {self.path}")
-                except Exception as e:
-                    logger.error(f"✖ Failed to serve HTML: {e}")
-                    self.send_json_error(500, "Failed to serve HTML file.")
-            else:
-                logger.warning(f"✖ HTML not found: {self.path}")
-                self.send_json_error(404, "HTML file not found.")
             return
 
         if self.path == '/api/files':
@@ -217,7 +223,7 @@ class UploadHandler(BaseHTTPRequestHandler):
                 self.send_json_error(404, "Image not found.")
             return
 
-        if self.path.startswith('/static/'):
+        if self.path.startswith('/frontend/'):
             static_path = os.path.join(BASE_DIR, 'services', self.path.lstrip('/'))
             if os.path.isfile(static_path):
                 ext = os.path.splitext(static_path)[1].lower()
@@ -245,7 +251,7 @@ class UploadHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/images/':
-            images_path = os.path.join(BASE_DIR, 'services', 'static', 'form', 'images.html')
+            images_path = os.path.join(BASE_DIR, 'services', 'frontend', 'images.html')
             if os.path.isfile(images_path):
                 try:
                     with open(images_path, 'rb') as f:
@@ -261,7 +267,7 @@ class UploadHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/upload/':
-            upload_path = os.path.join(BASE_DIR, 'services', 'static', 'form', 'upload.html')
+            upload_path = os.path.join(BASE_DIR, 'services', 'frontend', 'upload.html')
             if os.path.isfile(upload_path):
                 try:
                     with open(upload_path, 'rb') as f:
@@ -275,7 +281,6 @@ class UploadHandler(BaseHTTPRequestHandler):
                 logger.warning("✖ upload.html not found")
                 self.send_json_error(404, "upload.html not found")
             return
-
 
         logger.warning(f"✖ Unknown GET path: {self.path}")
         self.send_json_error(404, "Not Found")

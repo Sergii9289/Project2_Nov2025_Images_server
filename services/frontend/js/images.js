@@ -53,9 +53,23 @@ document.addEventListener('DOMContentLoaded', () => {
         storedFiles.forEach((fileData, index) => {
           const fileItem = document.createElement('div');
           fileItem.className = 'file-list-item';
+
+          // перевірка розширення
+          const ext = fileData.filename.split('.').pop().toLowerCase();
+          const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+          let previewHtml;
+
+          if (imageExts.includes(ext)) {
+            // показуємо реальне прев’ю
+            previewHtml = `<img src="/media/${fileData.filename}" alt="${fileData.display_name}" style="max-width:40px; max-height:40px;">`;
+          } else {
+            // fallback-іконка
+            previewHtml = `<img src="/frontend/img/icon/Group.png" alt="file icon">`;
+          }
+
           fileItem.innerHTML = `
             <div class="file-col file-col-name">
-              <span class="file-icon"><img src="/frontend/img/icon/Group.png" alt="file icon"></span>
+              <span class="file-icon">${previewHtml}</span>
               <span class="file-name">${fileData.display_name}</span>
             </div>
             <div class="file-col file-col-url">

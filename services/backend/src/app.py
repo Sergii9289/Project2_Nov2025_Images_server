@@ -172,6 +172,15 @@ class UploadHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(saved_file_info).encode())
 
     def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+            return
+        else:
+            # твоя логіка для інших шляхів
+            self.send_error(404, "Not Found")
+
         html_path = os.path.join(BASE_DIR, 'services', 'frontend', 'index.html')
 
         if self.path == '/':

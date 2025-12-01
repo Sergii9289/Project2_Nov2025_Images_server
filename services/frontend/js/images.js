@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', function (event) {
     if (event.key === 'F5' || event.key === 'Escape') {
       event.preventDefault();
-      window.location.href = '/form/upload.html';
+      window.location.href = '/upload/';
     }
   });
 

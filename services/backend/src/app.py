@@ -172,16 +172,8 @@ class UploadHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(saved_file_info).encode())
 
     def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"OK")
-            return
-        else:
-            # твоя логіка для інших шляхів
-            self.send_error(404, "Not Found")
-
-        html_path = os.path.join(BASE_DIR, 'services', 'frontend', 'index.html')
+        html_path = os.path.join('/usr/src/frontend', 'index.html')
+        # html_path = os.path.join(BASE_DIR, 'services', 'frontend', 'index.html')
 
         if self.path == '/':
             try:
@@ -233,7 +225,9 @@ class UploadHandler(BaseHTTPRequestHandler):
             return
 
         if self.path.startswith('/frontend/'):
-            static_path = os.path.join(BASE_DIR, 'services', self.path.lstrip('/'))
+            static_path = os.path.join('/usr/src/frontend', self.path.removeprefix('/frontend/'))
+
+            # static_path = os.path.join(BASE_DIR, 'services', self.path.lstrip('/'))
             if os.path.isfile(static_path):
                 ext = os.path.splitext(static_path)[1].lower()
                 content_types = {
@@ -260,7 +254,8 @@ class UploadHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/images/':
-            images_path = os.path.join(BASE_DIR, 'services', 'frontend', 'images.html')
+            # images_path = os.path.join(BASE_DIR, 'services', 'frontend', 'images.html')
+            images_path = os.path.join('/usr/src/frontend', 'images.html')
             if os.path.isfile(images_path):
                 try:
                     with open(images_path, 'rb') as f:
@@ -276,7 +271,8 @@ class UploadHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/upload/':
-            upload_path = os.path.join(BASE_DIR, 'services', 'frontend', 'upload.html')
+            # upload_path = os.path.join(BASE_DIR, 'services', 'frontend', 'upload.html')
+            upload_path = os.path.join('/usr/src/frontend', 'upload.html')
             if os.path.isfile(upload_path):
                 try:
                     with open(upload_path, 'rb') as f:
@@ -295,45 +291,45 @@ class UploadHandler(BaseHTTPRequestHandler):
         self.send_json_error(404, "Not Found")
 
 
-# def run():
-#     server = HTTPServer(("0.0.0.0", 8000), cast(RequestHandlerFactory, UploadHandler))
-#     print("Server running on http://localhost:8000 ...")
-#     server.serve_forever()
-
-def run_server_on_port(port: int):
-    """Starts a single HTTP server instance on the specified port.
-
-    Args:
-        port (int): The port number to bind the HTTP server to.
-
-    Side effects:
-        - Starts blocking HTTP server loop.
-        - Logs process and port information.
-    """
-    current_process().name = f"worker-{port}"
-    logger.info(f"Starting server on http://0.0.0.0:{port}")
-    server = HTTPServer(("0.0.0.0", port), cast(RequestHandlerFactory, UploadHandler))
+def run():
+    server = HTTPServer(("0.0.0.0", 8000), cast(RequestHandlerFactory, UploadHandler))
+    print("Server running on http://localhost:8000 ...")
     server.serve_forever()
 
-
-def run(workers: int = 1, start_port: int = 8000):
-    """Starts multiple server worker processes for concurrent handling.
-
-    Args:
-        workers (int): Number of worker processes to spawn.
-        start_port (int): Starting port number for workers.
-
-    Side effects:
-        - Launches `workers` processes each listening on a unique port.
-        - Logs worker startup.
-    """
-    for i in range(workers):
-        port = start_port + i
-        p = Process(target=run_server_on_port, args=(port,))
-        p.start()
-        logger.info(f"Worker {i + 1} started on port {port}")
+# def run_server_on_port(port: int):
+#     """Starts a single HTTP server instance on the specified port.
+#
+#     Args:
+#         port (int): The port number to bind the HTTP server to.
+#
+#     Side effects:
+#         - Starts blocking HTTP server loop.
+#         - Logs process and port information.
+#     """
+#     current_process().name = f"worker-{port}"
+#     logger.info(f"Starting server on http://0.0.0.0:{port}")
+#     server = HTTPServer(("0.0.0.0", port), cast(RequestHandlerFactory, UploadHandler))
+#     server.serve_forever()
+#
+#
+# def run(workers: int = 1, start_port: int = 8000):
+#     """Starts multiple server worker processes for concurrent handling.
+#
+#     Args:
+#         workers (int): Number of worker processes to spawn.
+#         start_port (int): Starting port number for workers.
+#
+#     Side effects:
+#         - Launches `workers` processes each listening on a unique port.
+#         - Logs worker startup.
+#     """
+#     for i in range(workers):
+#         port = start_port + i
+#         p = Process(target=run_server_on_port, args=(port,))
+#         p.start()
+#         logger.info(f"Worker {i + 1} started on port {port}")
 
 if __name__ == '__main__':
-    # run()
+    run()
     # print(get_files())
-    run(workers=config.WEB_SERVER_WORKERS, start_port=config.WEB_SERVER_START_PORT)
+    # run(workers=config.WEB_SERVER_WORKERS, start_port=config.WEB_SERVER_START_PORT)

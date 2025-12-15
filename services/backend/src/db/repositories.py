@@ -165,7 +165,7 @@ class PostgresImageRepository(ImageRepository):
             raise QueryExecutionError("list_all", str(e))
 
 
-    def ccount(self) -> int:
+    def count(self) -> int:
         """Count of total number of imsges"""
         query = "SELECT COUNT(*) FROM images"
         try:

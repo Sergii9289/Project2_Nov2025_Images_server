@@ -12,8 +12,6 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from python_multipart import parse_form
 from exceptions.api_errors import NotSupportedFormatError, MaxSizeExceedError, APIError
 from interfaces.protocols import SupportsWrite, RequestHandlerFactory
-from settings.config import config as config, BASE_DIR
-from settings.logging_config import get_logger
 
 import re
 import unicodedata
@@ -164,12 +162,31 @@ class UploadHandler(BaseHTTPRequestHandler):
 
             saved_file_info['filename'] = unique_name
             saved_file_info['url'] = f'/images/{unique_name}'
+            saved_file_info['size'] = size
+            saved_file_info['original_name'] = filename
+            saved_file_info['file_type'] = ext
             logger.info("File saved successfully: %s", unique_name)
 
         try:
             parse_form(headers, self.rfile, lambda _: None, on_file)
         except APIError as e:
             logger.error("APIError: %s", e.message)
+            self.send_json_error(e.status_code, e.message)
+            return
+
+        # --- інтеграція з БД ---
+        repository = get_image_repository()
+        image_dto = ImageDTO(
+            filename=saved_file_info['filename'],
+            original_name=saved_file_info['original_name'],
+            size=saved_file_info['size'],
+            file_type=saved_file_info['file_type']
+        )
+
+        try:
+            repository.create(image_dto)
+        except RepositoryError as e:
+            logger.error("Failed to save image metadata to DB: %s", e.message)
             self.send_json_error(e.status_code, e.message)
             return
 

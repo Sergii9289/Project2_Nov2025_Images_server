@@ -1,4 +1,4 @@
-from api_errors import APIError
+from exceptions.api_errors import APIError
 
 
 class RepositoryError(APIError):

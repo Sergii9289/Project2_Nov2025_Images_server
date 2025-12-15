@@ -2,12 +2,12 @@ from typing import Optional, List
 from psycopg_pool import ConnectionPool
 from psycopg.errors import Error as PsycopgError
 
-from ..interfaces.repositories import (
+from interfaces.repositories import (
     ImageRepository,
     ImageDTO,
     ImageDetailsDTO
 )
-from ..exceptions.repository_errors import (
+from exceptions.repository_errors import (
     EntityCreationError,
     EntityDeletionError,
     QueryExecutionError

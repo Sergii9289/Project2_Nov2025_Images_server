@@ -7,7 +7,7 @@ which handle data access operations for specific entity types.
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from ..db.dto import ImageDTO, ImageDetailsDTO
+from db.dto import ImageDTO, ImageDetailsDTO
 
 
 class ImageRepository(ABC):

@@ -1,7 +1,7 @@
 from typing import Dict, Optional, Tuple
 
-from ..dto.pagination import PaginationDTO
-from ..interfaces.pagination import InvalidPageNumberError, InvalidPerPageError
+from dto.pagination import PaginationDTO
+from interfaces.pagination import InvalidPageNumberError, InvalidPerPageError
 
 
 class PaginationMixin:

@@ -1,8 +1,8 @@
 from typing import Optional
 
-from session import get_connection_pool
-from repositories import PostgresImageRepository
-from ..interfaces.repositories import ImageRepository
+from db.session import get_connection_pool
+from db.repositories import PostgresImageRepository
+from interfaces.repositories import ImageRepository
 
 _image_repository: Optional[ImageRepository] = None
 

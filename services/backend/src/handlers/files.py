@@ -1,7 +1,8 @@
 import os
 from datetime import datetime, UTC
 
-from services.backend.src.settings.config import config
+from settings.config import config
+from interfaces.handlers import FileHandlerInterface
 
 def list_uploaded_images() -> list[dict[str, str | int]]:
     """Повертає список метаданих зображення (name, size, created_at) з папки з завантаженнями."""
@@ -27,5 +28,9 @@ def list_uploaded_images() -> list[dict[str, str | int]]:
                 "created_at": created_at
             })
     return files
+
+class FileHandler(FileHandlerInterface):
+    pass
+
 
 # print(list_uploaded_images())

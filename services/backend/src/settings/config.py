@@ -17,6 +17,55 @@ class AppConfig(BaseSettings):
     MAX_FILE_SIZE: int = 5 * 1024 * 1024
     SUPPORTED_FORMATS: set[str] = {'.jpg', '.png', '.gif'}
 
+    POSTGRES_DB: str
+    POSTGRES_DB_PORT: int
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_HOST: str
+
+    PGBOUNCER_USER: str
+    PGBOUNCER_PASSWORD: str
+    PGBOUNCER_HOST: str
+    PGBOUNCER_PORT: int
+    USE_PGBOUNCER: bool = True
+
+    @property
+    def database_url(self) -> str:
+        """Construct PostgreSQL connection string.
+
+        Returns:
+            str: Database connection URL in format suitable for psycopg.
+        """
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+            f"{self.POSTGRES_HOST}:{self.POSTGRES_DB_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def pgbouncer_url(self) -> str:
+        """Construct PgBouncer connection string.
+
+        Returns:
+            str: PgBouncer connection URL in format suitable for psycopg.
+        """
+        return (
+            f"postgresql://{self.PGBOUNCER_USER}:{self.PGBOUNCER_PASSWORD}@"
+            f"{self.PGBOUNCER_HOST}:{self.PGBOUNCER_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def db_url(self) -> str:
+        """Return the active database connection URL.
+
+        Uses PgBouncer if USE_PGBOUNCER is set to True, otherwise
+        uses direct PostgreSQL connection.
+
+        Returns:
+            str: Active database connection URL.
+        """
+        return self.pgbouncer_url if self.USE_PGBOUNCER else self.database_url
+
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8"

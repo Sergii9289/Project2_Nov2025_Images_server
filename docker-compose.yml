@@ -1,13 +1,18 @@
+
 services:
   web:
     restart: always
     build:
-      context: services/backend
+     # context: services/backend
+      context: ./services/backend
       dockerfile: Dockerfile
     container_name: upload-server
-    command: [ "python", "app.py" ]
+    command: [ "python", "run.py" ]
     env_file:
-      - services/backend/.env
+      - ./services/backend/.env
+      - ./services/pgbouncer/.env
+      # - services/backend/.env
+      # - ./services/pgbouncer/.env
     environment:
       - LOG_LEVEL=debug
       - PYTHONPATH=/usr/src/upload-server
@@ -15,9 +20,11 @@ services:
       - ./services/backend/src:/usr/src/upload-server
       - ./images:/usr/src/images
       - ./logs:/usr/src/logs
-      - ./services/frontend:/usr/src/frontend:ro
     ports:
-      - "8000-8009:8000-8009"
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/" ]
       interval: 10s
@@ -42,5 +49,54 @@ services:
     networks:
       - upload-server-network
 
+  db:
+    image: 'postgres:17.4'
+    restart: unless-stopped
+    container_name: postgres-upload-server
+    env_file:
+      - services/backend/.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-sql:/docker-entrypoint-initdb.d
+      - postgres_upload_server_data:/var/lib/postgresql/data/
+    networks:
+      - upload-server-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  pgbouncer:
+    build:
+      context: ./services/pgbouncer
+      dockerfile: Dockerfile
+    container_name: pgbouncer-upload-server
+    restart: always
+    env_file:
+      - ./services/backend/.env
+      - ./services/pgbouncer/.env
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./logs/pgbouncer:/var/log/pgbouncer
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${PGBOUNCER_USER} -d $${POSTGRES_DB} || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - upload-server-network
+
+
 networks:
   upload-server-network:
+
+volumes:
+  postgres_upload_server_data:
+    driver: local

@@ -84,18 +84,45 @@ class UploadHandler(BaseHTTPRequestHandler):
             filename = self.path.removeprefix('/api/delete/')
             file_path = os.path.join(config.IMAGE_DIR, filename)
 
+            repository = get_image_repository()
+
+            # Перевірка: чи є запис у БД
+            try:
+                image = repository.get_by_filename(filename)
+                if not image:
+                    logger.warning(f"✖ No DB record found for: {filename}")
+                    self.send_json_error(404, "File record not found in DB")
+                    return
+            except RepositoryError as e:
+                logger.error(f"✖ DB error while fetching record: {e.message}")
+                self.send_json_error(e.status_code, e.message)
+                return
+
+            # Видалення файлу з диску
             if os.path.isfile(file_path):
                 try:
                     os.remove(file_path)
-                    logger.info(f"✓ Deleted file: {filename}")
-                    self.set_headers(200, {"Content-Type": "application/json"})
-                    self.wfile.write(json.dumps({"detail": "File deleted"}).encode())
+                    logger.info(f"✓ Deleted file from disk: {filename}")
                 except Exception as e:
                     logger.error(f"✖ Failed to delete file: {e}")
-                    self.send_json_error(500, "Failed to delete file")
+                    self.send_json_error(500, "Failed to delete file from disk")
+                    return
             else:
-                logger.warning(f"✖ File not found for deletion: {filename}")
-                self.send_json_error(404, "File not found")
+                logger.warning(f"✖ File not found on disk: {filename}")
+                # навіть якщо файлу немає, все одно видаляємо запис у БД
+
+            # Видалення запису з БД
+            try:
+                repository.delete_by_filename(filename)
+                logger.info(f"✓ Deleted DB record for: {filename}")
+            except RepositoryError as e:
+                logger.error(f"✖ Failed to delete DB record: {e.message}")
+                self.send_json_error(e.status_code, e.message)
+                return
+
+            # Успішна відповідь
+            self.set_headers(200, {"Content-Type": "application/json"})
+            self.wfile.write(json.dumps({"detail": "File and DB record deleted"}).encode())
         else:
             logger.warning(f"✖ Unsupported DELETE path: {self.path}")
             self.send_json_error(404, "Not Found")

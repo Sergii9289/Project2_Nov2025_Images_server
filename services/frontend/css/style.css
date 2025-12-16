@@ -235,7 +235,7 @@ body {
     margin: 0 auto;
     padding: 20px;
     border-radius: 8px;
-    margin-bottom: 292px;
+    margin-bottom: 50px;
 }
 
 /* Common style for a row (both header and list item) */
@@ -324,4 +324,43 @@ body {
     /* REMOVE BACKGROUND ON HOVER */
     opacity: 0.7;
     /* Make the icon semi-transparent for user feedback */
+}
+
+/* Pagination wrapper */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+/* Pagination buttons */
+.pagination-btn {
+  padding: 6px 12px;
+  border: 1px solid #0060ff;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #0060ff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.pagination-btn:hover {
+  background-color: #0060ff;
+  color: #ffffff;
+}
+
+/* Active page */
+.pagination-btn.active {
+  background-color: #0060ff;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* Disabled prev/next */
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

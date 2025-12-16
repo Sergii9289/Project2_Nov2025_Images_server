@@ -31,12 +31,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Відображення файлів
   const displayFiles = async () => {
     try {
-      const response = await fetch('/api/files');
-      const storedFiles = await response.json();
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+      const response = await fetch(`/api/files?limit=${ITEMS_PER_PAGE}&offset=${offset}`);
+      const storedData = await response.json();
+
+      const storedFiles = storedData.items || [];
+      const totalCount = storedData.totalCount || 0;
 
       fileListWrapper.innerHTML = '';
 
-      if (!storedFiles || storedFiles.length === 0) {
+      if (storedFiles.length === 0) {
         fileListWrapper.innerHTML =
           '<p class="upload__promt" style="text-align: center; margin-top: 50px;">Зображення ще не завантажено.</p>';
       } else {
@@ -55,12 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const list = document.createElement('div');
         list.id = 'file-list';
 
-        // Пагінація
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        const endIndex = startIndex + ITEMS_PER_PAGE;
-        const pageFiles = storedFiles.slice(startIndex, endIndex);
-
-        pageFiles.forEach((fileData) => {
+        storedFiles.forEach((fileData) => {
           const fileItem = document.createElement('div');
           fileItem.className = 'file-list-item';
 
@@ -89,9 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         container.appendChild(list);
         fileListWrapper.appendChild(container);
-
         addDeleteListeners();
-        renderPagination(storedFiles.length);
+
+        // тепер викликаємо пагінацію
+        renderPagination(totalCount);
       }
 
       updateTabStyles();
@@ -158,8 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const filename = event.currentTarget.dataset.filename;
         try {
           await fetch(`/api/delete/${filename}`, { method: 'DELETE' });
-          // якщо після видалення сторінка порожня — повертаємось на попередню
-          currentPage = Math.min(currentPage, Math.ceil((document.querySelectorAll('.file-list-item').length - 1) / ITEMS_PER_PAGE) || 1);
+          currentPage = Math.min(
+            currentPage,
+            Math.ceil((document.querySelectorAll('.file-list-item').length - 1) / ITEMS_PER_PAGE) || 1
+          );
           displayFiles();
         } catch (err) {
           console.error('✖ Failed to delete file:', err);

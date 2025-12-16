@@ -5,3 +5,7 @@ https://www.youtube.com/watch?v=a3yWFYe7nmY
 
 GIT:
 https://github.com/Calvin-alis/step_project_2
+
+Вхід у БД
+docker exec -it postgres-upload-server psql -U admin -d upload_images_db
+

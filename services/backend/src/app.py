@@ -15,9 +15,10 @@ from interfaces.protocols import SupportsWrite, RequestHandlerFactory
 
 import re
 import unicodedata
-
+import urllib
 from db.dependencies import get_image_repository
 from db.dto import ImageDTO
+from db.repositories import PostgresImageRepository
 from exceptions.api_errors import APIError
 from exceptions.repository_errors import RepositoryError
 from handlers.dependencies import get_file_handler
@@ -238,12 +239,37 @@ class UploadHandler(BaseHTTPRequestHandler):
                 self.send_json_error(404, "index.html not found")
             return
 
-        if self.path == '/api/files':
+        if self.path.startswith('/api/files'):
             try:
-                files = get_files()  # твоя функція, що повертає список файлів
+                parsed_url = urllib.parse.urlparse(self.path)
+                query_params = urllib.parse.parse_qs(parsed_url.query)
+
+                limit = int(query_params.get("limit", [10])[0])
+                offset = int(query_params.get("offset", [0])[0])
+
+                repository = get_image_repository()
+                files = repository.list_all(limit=limit, offset=offset)
+                total_count = repository.count()
+
+                result = {
+                    "items": [
+                        {
+                            "filename": img.filename,
+                            "display_name": (
+                                "_".join(img.original_name.split("_")[:-1]) + os.path.splitext(img.original_name)[1]
+                                if "_" in os.path.splitext(img.original_name)[0]
+                                else img.original_name
+                            )
+                        }
+                        for img in files
+                    ],
+                    "totalCount": total_count
+                }
+
                 self.set_headers(200, {"Content-Type": "application/json"})
-                self.wfile.write(json.dumps(files, ensure_ascii=False).encode('utf-8'))
-                logger.info("→ Served files list")
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode("utf-8"))
+                logger.info(f"→ Served files list (limit={limit}, offset={offset}, total={total_count})")
+
             except Exception as e:
                 logger.error(f"✖ Failed to get files: {e}")
                 self.send_json_error(500, "Failed to get files")

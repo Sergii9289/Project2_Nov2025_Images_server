@@ -10,24 +10,19 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Python-бібліотека для обробки multipart/form-data
 from python_multipart import parse_form
-from exceptions.api_errors import NotSupportedFormatError, MaxSizeExceedError, APIError
-from interfaces.protocols import SupportsWrite, RequestHandlerFactory
-
+from exceptions.api_errors import NotSupportedFormatError, MaxSizeExceedError
+from interfaces.protocols import SupportsWrite
+import os
 import re
 import unicodedata
 import urllib
 from db.dependencies import get_image_repository
 from db.dto import ImageDTO
-from db.repositories import PostgresImageRepository
 from exceptions.api_errors import APIError
 from exceptions.repository_errors import RepositoryError
-from handlers.dependencies import get_file_handler
-from interfaces.pagination import InvalidPageNumberError, InvalidPerPageError
 from interfaces.protocols import RequestHandlerFactory
-from mixins.pagination import PaginationMixin
 from settings.config import config
 from settings.logging_config import get_logger
-from mixins.http import RouterMixin, JsonResponseMixin
 
 
 def sanitize_filename(name: str) -> str:
@@ -39,26 +34,6 @@ def sanitize_filename(name: str) -> str:
 
 
 logger = get_logger(__name__)
-
-import os
-
-
-def get_files():
-    files = []
-    for filename in os.listdir(config.IMAGE_DIR):
-        if os.path.isfile(os.path.join(config.IMAGE_DIR, filename)) and os.path.splitext(filename)[
-            1].lower() in config.SUPPORTED_FORMATS:
-            name_part, ext = os.path.splitext(filename)
-            # беремо все до останнього "_"
-            if "_" in name_part:
-                display_name = "_".join(name_part.split("_")[:-1]) + ext
-            else:
-                display_name = filename  # якщо немає "_", залишаємо як є
-            files.append({
-                "filename": filename,
-                "display_name": display_name
-            })
-    return files
 
 
 class UploadHandler(BaseHTTPRequestHandler):

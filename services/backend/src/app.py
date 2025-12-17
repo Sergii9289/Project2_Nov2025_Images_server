@@ -23,6 +23,7 @@ from exceptions.repository_errors import RepositoryError
 from interfaces.protocols import RequestHandlerFactory
 from settings.config import config
 from settings.logging_config import get_logger
+from mixins.http import HeadersMixin, JsonResponseMixin, LoggingMixin
 
 
 def sanitize_filename(name: str) -> str:
@@ -36,24 +37,7 @@ def sanitize_filename(name: str) -> str:
 logger = get_logger(__name__)
 
 
-class UploadHandler(BaseHTTPRequestHandler):
-
-    def set_headers(self, status_code: int, headers: dict):
-        self.send_response(status_code)
-        for key, value in headers.items():
-            self.send_header(key, value)
-        self.end_headers()
-
-    def log_message(self, format: str, *args: Any) -> None:
-        # Приглушити стандартне логування (наприклад, GET /static/...)
-        if self.path.startswith('/frontend/'):
-            return  # нічого не логувати
-        super().log_message(format, *args)
-
-    def send_json_error(self, status_code: int, message: str) -> None:
-        self.set_headers(status_code, {"Content-Type": "application/json"})
-        response = {"detail": message}
-        self.wfile.write(json.dumps(response).encode())
+class UploadHandler(BaseHTTPRequestHandler, HeadersMixin, JsonResponseMixin, LoggingMixin):
 
     def do_DELETE(self):
         if self.path.startswith('/api/delete/'):
@@ -347,48 +331,47 @@ class UploadHandler(BaseHTTPRequestHandler):
 """For 1 process"""
 
 
-def run():
-    server = HTTPServer(("0.0.0.0", 8000), cast(RequestHandlerFactory, UploadHandler))
-    print("Server running on http://localhost:8000 ...")
-    server.serve_forever()
+# def run():
+#     server = HTTPServer(("0.0.0.0", 8000), cast(RequestHandlerFactory, UploadHandler))
+#     print("Server running on http://localhost:8000 ...")
+#     server.serve_forever()
 
 
 """Use this for 10 processes"""
 
-# def run_server_on_port(port: int):
-#     """Starts a single HTTP server instance on the specified port.
-#
-#     Args:
-#         port (int): The port number to bind the HTTP server to.
-#
-#     Side effects:
-#         - Starts blocking HTTP server loop.
-#         - Logs process and port information.
-#     """
-#     current_process().name = f"worker-{port}"
-#     logger.info(f"Starting server on http://0.0.0.0:{port}")
-#     server = HTTPServer(("0.0.0.0", port), cast(RequestHandlerFactory, UploadHandler))
-#     server.serve_forever()
-#
-#
-# def run(workers: int = 1, start_port: int = 8000):
-#     """Starts multiple server worker processes for concurrent handling.
-#
-#     Args:
-#         workers (int): Number of worker processes to spawn.
-#         start_port (int): Starting port number for workers.
-#
-#     Side effects:
-#         - Launches `workers` processes each listening on a unique port.
-#         - Logs worker startup.
-#     """
-#     for i in range(workers):
-#         port = start_port + i
-#         p = Process(target=run_server_on_port, args=(port,))
-#         p.start()
-#         logger.info(f"Worker {i + 1} started on port {port}")
+def run_server_on_port(port: int):
+    """Starts a single HTTP server instance on the specified port.
+
+    Args:
+        port (int): The port number to bind the HTTP server to.
+
+    Side effects:
+        - Starts blocking HTTP server loop.
+        - Logs process and port information.
+    """
+    current_process().name = f"worker-{port}"
+    logger.info(f"Starting server on http://0.0.0.0:{port}")
+    server = HTTPServer(("0.0.0.0", port), cast(RequestHandlerFactory, UploadHandler))
+    server.serve_forever()
+
+
+def run(workers: int = 1, start_port: int = 8000):
+    """Starts multiple server worker processes for concurrent handling.
+
+    Args:
+        workers (int): Number of worker processes to spawn.
+        start_port (int): Starting port number for workers.
+
+    Side effects:
+        - Launches `workers` processes each listening on a unique port.
+        - Logs worker startup.
+    """
+    for i in range(workers):
+        port = start_port + i
+        p = Process(target=run_server_on_port, args=(port,))
+        p.start()
+        logger.info(f"Worker {i + 1} started on port {port}")
 
 if __name__ == '__main__':
-    run()
-    # print(get_files())
-    # run(workers=config.WEB_SERVER_WORKERS, start_port=config.WEB_SERVER_START_PORT)
+    # run()
+    run(workers=config.WEB_SERVER_WORKERS, start_port=config.WEB_SERVER_START_PORT)
